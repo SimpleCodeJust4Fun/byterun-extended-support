@@ -13,6 +13,7 @@ class Function(object):
 ```
 这个定义，换句话说，他压根就没有支持PY3里函数对象的那些属性
 
+```python
 class Function(object):
     __slots__ = [
         'func_code', 'func_name', 'func_defaults', 'func_globals',
@@ -31,6 +32,8 @@ class Function(object):
         self.func_locals = self._vm.frame.f_locals
         self.__code__ = code
         self.__closure__ = closure
+```
+
 
 这样定义并运行Function类的构造函数，但是调试运行时，发现运行self.__defaults__ = tuple(defaults)并不会让self多出一个__name__属性，为什么？
 
