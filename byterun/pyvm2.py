@@ -175,9 +175,9 @@ class VirtualMachine(object):
         arg = None
         arguments = []
         if byteCode >= dis.HAVE_ARGUMENT:
-            arg = f.f_code.co_code[f.f_lasti:f.f_lasti+2]
-            f.f_lasti += 2
-            intArg = byteint(arg[0]) + (byteint(arg[1]) << 8)
+            arg = f.f_code.co_code[f.f_lasti:f.f_lasti+1]
+            f.f_lasti += 1
+            intArg = byteint(arg[0])
             if byteCode in dis.hasconst:
                 arg = f.f_code.co_consts[intArg]
             elif byteCode in dis.hasfree:
