@@ -12,6 +12,30 @@ class TestIt(vmtest.VmTestCase):
     def test_constant(self):
         self.assert_ok("17")
 
+    def test_var(self):
+        self.assert_ok("""
+            a = 17
+        """)
+
+    def test_return_constant(self):
+        self.assert_ok("""
+        def test():
+            return 17
+        test()
+        """)
+
+    def test_return_var(self):
+        self.assert_ok("""
+            a = 17
+            return a
+        """)
+
+    def test_print(self):
+        self.assert_ok("""
+            a = 17
+            print(a)
+        """)
+
     def test_globals(self):
         self.assert_ok("""\
             global xyz
@@ -203,6 +227,7 @@ class TestIt(vmtest.VmTestCase):
                         initial_indent=blanks, subsequent_indent=blanks)
             print(res)
             """)
+
     def test_list_comprehension(self):
         self.assert_ok("""\
             x = [z*z for z in range(5)]
