@@ -394,3 +394,24 @@ list(frame.f_code.co_code)
 ```
 
 搞错了，主角只是113号JUMP_ABSOLUTE，修改为跳转字节码而不是字节数即可（跳转距离乘以二）
+
+## 移除py2
+1. 移除虚拟机和测试中固有的if PY2
+2. 之前的遗留问题，实现函数对象时支持的属性（在3.3.5分支解决的那个问题）
+
+```shell
+>>> def test():
+...    print(1)
+...    return 2
+>>> dir(test)
+['__annotations__', '__builtins__', '__call__', '__class__', '__closure__', 
+'__code__', '__defaults__', '__delattr__', '__dict__', '__dir__', 
+'__doc__', '__eq__', '__format__', '__ge__', '__get__', 
+'__getattribute__', '__globals__', '__gt__', '__hash__', 
+'__init__', '__init_subclass__', '__kwdefaults__', '__le__', 
+'__lt__', '__module__', '__name__', '__ne__', '__new__', 
+'__qualname__', '__reduce__', '__reduce_ex__', '__repr__', 
+'__setattr__', '__sizeof__', '__str__', '__subclasshook__']
+
+```
+
