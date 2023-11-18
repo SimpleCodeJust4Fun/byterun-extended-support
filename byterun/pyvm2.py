@@ -172,7 +172,7 @@ class VirtualMachine(object):
         byteCode = byteint(f.f_code.co_code[opoffset])
         f.f_lasti += 1
         byteName = dis.opname[byteCode]
-        if byteName == "RETURN_VALUE":
+        if byteName.startswith("POP"):
             1
         arg = f.f_code.co_code[f.f_lasti:f.f_lasti+1]
         f.f_lasti += 1
@@ -188,7 +188,7 @@ class VirtualMachine(object):
         elif byteCode in dis.hasname:
             arg = f.f_code.co_names[intArg]
         elif byteCode in dis.hasjrel:
-            arg = f.f_lasti + intArg
+            arg = f.f_lasti + 2 * intArg
         elif byteCode in dis.hasjabs:
             arg = intArg
         elif byteCode in dis.haslocal:
@@ -314,9 +314,10 @@ class VirtualMachine(object):
         """
         self.push_frame(frame)
         while True:
-
+            if self.frame.f_lasti == 20:
+                1
             byteName, arguments, opoffset = self.parse_byte_and_args()
-            if byteName == "RETURN_VALUE":
+            if byteName.startswith("POP"):
                 1
             if log.isEnabledFor(logging.INFO):
                 self.log(byteName, arguments, opoffset)
@@ -683,12 +684,12 @@ class VirtualMachine(object):
     def byte_POP_JUMP_IF_TRUE(self, jump):
         val = self.pop()
         if val:
-            self.jump(jump)
+            self.jump(2*jump)
 
     def byte_POP_JUMP_IF_FALSE(self, jump):
         val = self.pop()
         if not val:
-            self.jump(jump)
+            self.jump(2*jump)
 
     def byte_JUMP_IF_TRUE_OR_POP(self, jump):
         val = self.top()

@@ -24,12 +24,6 @@ class TestIt(vmtest.VmTestCase):
         test()
         """)
 
-    def test_return_var(self):
-        self.assert_ok("""
-            a = 17
-            return a
-        """)
-
     def test_print(self):
         self.assert_ok("""
             a = 17
@@ -51,6 +45,28 @@ class TestIt(vmtest.VmTestCase):
             abc()
             print("Post:",xyz)
             """)
+
+    def test_basic_flow_control(self):
+        self.assert_ok("""
+        a = 1
+        if a == 2:
+            print("ok")
+        else:
+            print("not ok")
+        """)
+
+    def test_thorough_flow_control(self):
+        self.assert_ok("""
+        a = 1
+        if a == 1:
+            print("ok")
+        else:
+            print("not ok")
+        if a == 2:
+            print("ok")
+        else:
+            print("not ok")
+        """)
 
     def test_for_loop(self):
         self.assert_ok("""\

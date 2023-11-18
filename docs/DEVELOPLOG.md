@@ -223,3 +223,124 @@ def byte_POP_TOP(self, arg):
     self.pop()
 ```
 再运行测试代码，发现通过了
+
+## 支持if-else
+### 简单if-else
+Python代码：
+```python
+a = 1
+if a == 2:
+    print("ok")
+else:
+    print("not ok")
+```
+dis字节码
+```shell
+>>> dis.dis(code)
+  2           0 LOAD_CONST               0 (1)
+              2 STORE_NAME               0 (a)
+  3           4 LOAD_NAME                0 (a)
+              6 LOAD_CONST               1 (2)
+              8 COMPARE_OP               2 (==)
+             10 POP_JUMP_IF_FALSE       12 (to 24)
+  4          12 LOAD_NAME                1 (print)
+             14 LOAD_CONST               2 ('ok')
+             16 CALL_FUNCTION            1
+             18 POP_TOP
+             20 LOAD_CONST               4 (None)
+             22 RETURN_VALUE
+  6     >>   24 LOAD_NAME                1 (print)
+             26 LOAD_CONST               3 ('not ok')
+             28 CALL_FUNCTION            1
+             30 POP_TOP
+             32 LOAD_CONST               4 (None)
+             34 RETURN_VALUE
+```
+原生字节码：
+```shell
+list(f.f_code.co_code)
+[100, 0, 90, 0, 
+
+101, 0, 100, 1, 107, 2, 114, 12, 
+
+101, 1, 100, 2, 131, 1, 1, 0, 100, 4, 83, 0, 
+
+101, 1, 100, 3, 131, 1, 1, 0, 100, 4, 83, 0]
+```
+if-else是用指令跳转实现的，因此if条件满足就不跳转，继续执行，否则跳转到else处执行，目前的跳转功能没有实现，不满足if条件时
+，不能跳转到else处。涉及到的比较字节码为：107号COMPARE_OP，跳转字节码为114号POP_JUMP_IF_FALSE
+经排查，107号COMPARE_OP没有问题。因此只能是跳转指令的问题
+
+官方文档：在 3.10 版更改: 跳转、异常处理和循环指令的参数现在将为指令偏移量而不是字节偏移量。
+- https://docs.python.org/zh-cn/3/library/dis.html
+
+### 复杂if-else
+Python代码：
+```python
+def test_thorough_flow_control(self):
+    self.assert_ok("""
+    a = 1
+    if a == 1:
+        print("ok")
+    else:
+        print("not ok")
+    if a == 2:
+        print("ok")
+    else:
+        print("not ok")
+    """)
+```
+```shell
+  2           0 LOAD_CONST               0 (1)
+              2 STORE_NAME               0 (a)
+  3           4 LOAD_NAME                0 (a)
+              6 LOAD_CONST               0 (1)
+              8 COMPARE_OP               2 (==)
+             10 POP_JUMP_IF_FALSE       11 (to 22)
+  4          12 LOAD_NAME                1 (print)
+             14 LOAD_CONST               1 ('ok')
+             16 CALL_FUNCTION            1
+             18 POP_TOP
+             20 JUMP_FORWARD             4 (to 30)
+  6     >>   22 LOAD_NAME                1 (print)
+             24 LOAD_CONST               2 ('not ok')
+             26 CALL_FUNCTION            1
+             28 POP_TOP
+  7     >>   30 LOAD_NAME                0 (a)
+             32 LOAD_CONST               3 (2)
+             34 COMPARE_OP               2 (==)
+             36 POP_JUMP_IF_FALSE       25 (to 50)
+  8          38 LOAD_NAME                1 (print)
+             40 LOAD_CONST               1 ('ok')
+             42 CALL_FUNCTION            1
+             44 POP_TOP
+             46 LOAD_CONST               4 (None)
+             48 RETURN_VALUE
+ 10     >>   50 LOAD_NAME                1 (print)
+             52 LOAD_CONST               2 ('not ok')
+             54 CALL_FUNCTION            1
+             56 POP_TOP
+             58 LOAD_CONST               4 (None)
+             60 RETURN_VALUE
+
+```
+```shell
+>>> list(f.f_code.co_code)
+[100, 0, 90, 0, 
+
+101, 0, 100, 0, 107, 2, 114, 11, 
+
+101, 1, 100, 1, 131, 1, 1, 0, 110, 4, 
+
+101, 1, 100, 2, 131, 1, 1, 0, 
+
+101, 0, 100, 3, 107, 2, 114, 25, 
+
+101, 1, 100, 1, 131, 1, 1, 0, 100, 4, 83, 0, 101, 1, 100, 2, 131, 1, 1, 0, 100, 4, 83, 0]
+```
+
+发现比起上一个，多了跳转指令JUMP_FORWARD。查阅两个字节码的机制花了不少功夫，这里chatgpt3.5是很没用的（经查阅，Python3.10发布于2021年10月14日。而GPT3.5的知识库截止日是2021年9月）
+
+POP_JUMP_IF_FALSE跳转的是绝对量，但跳转值从字节数量改成了字节码数量，因此在字节码本身的实现上要乘以2
+JUMP_FORWARD是相对跳转，也是从字节数量变成字节码数量，字节码本身实现不改动，而是在`parse_byte_and_args`中
+的`elif byteCode in dis.hasjrel`:里乘以2，具体查看commit的代码更新
