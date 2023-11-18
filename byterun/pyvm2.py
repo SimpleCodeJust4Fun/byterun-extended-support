@@ -172,8 +172,6 @@ class VirtualMachine(object):
         byteCode = byteint(f.f_code.co_code[opoffset])
         f.f_lasti += 1
         byteName = dis.opname[byteCode]
-        if byteName.startswith("POP"):
-            1
         arg = f.f_code.co_code[f.f_lasti:f.f_lasti+1]
         f.f_lasti += 1
         intArg = byteint(arg[0])
@@ -313,12 +311,9 @@ class VirtualMachine(object):
 
         """
         self.push_frame(frame)
+
         while True:
-            if self.frame.f_lasti == 20:
-                1
             byteName, arguments, opoffset = self.parse_byte_and_args()
-            if byteName.startswith("POP"):
-                1
             if log.isEnabledFor(logging.INFO):
                 self.log(byteName, arguments, opoffset)
 
@@ -668,7 +663,7 @@ class VirtualMachine(object):
         self.jump(jump)
 
     def byte_JUMP_ABSOLUTE(self, jump):
-        self.jump(jump)
+        self.jump(jump*2)
 
     if 0:   # Not in py2.7
         def byte_JUMP_IF_TRUE(self, jump):
@@ -684,12 +679,12 @@ class VirtualMachine(object):
     def byte_POP_JUMP_IF_TRUE(self, jump):
         val = self.pop()
         if val:
-            self.jump(2*jump)
+            self.jump(jump*2)
 
     def byte_POP_JUMP_IF_FALSE(self, jump):
         val = self.pop()
         if not val:
-            self.jump(2*jump)
+            self.jump(jump*2)
 
     def byte_JUMP_IF_TRUE_OR_POP(self, jump):
         val = self.top()
@@ -710,7 +705,7 @@ class VirtualMachine(object):
     def byte_SETUP_LOOP(self, dest):
         self.push_block('loop', dest)
 
-    def byte_GET_ITER(self):
+    def byte_GET_ITER(self, arg):
         self.push(iter(self.pop()))
 
     def byte_FOR_ITER(self, jump):

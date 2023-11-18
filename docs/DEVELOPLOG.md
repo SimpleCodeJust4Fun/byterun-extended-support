@@ -344,3 +344,53 @@ def test_thorough_flow_control(self):
 POP_JUMP_IF_FALSE跳转的是绝对量，但跳转值从字节数量改成了字节码数量，因此在字节码本身的实现上要乘以2
 JUMP_FORWARD是相对跳转，也是从字节数量变成字节码数量，字节码本身实现不改动，而是在`parse_byte_and_args`中
 的`elif byteCode in dis.hasjrel`:里乘以2，具体查看commit的代码更新 
+
+## 支持for循环
+主角是68号GET_ITER、93号FOR_ITER和113号JUMP_ABSOLUTE
+Python源码：
+```python
+def test_for_loop(self):
+    self.assert_ok("""\
+        out = ""
+        for i in range(5):
+            out = out + str(i)
+        print(out)
+        """)
+```
+dis字节码：
+```shell
+tests/test_basic.py::TestIt::test_for_loop >>> dis.dis(code)
+PyDev console: starting.
+  1           0 LOAD_CONST               0 ('')
+              2 STORE_NAME               0 (out)
+  2           4 LOAD_NAME                1 (range)
+              6 LOAD_CONST               1 (5)
+              8 CALL_FUNCTION            1
+             10 GET_ITER
+        >>   12 FOR_ITER                 8 (to 30)
+             14 STORE_NAME               2 (i)
+  3          16 LOAD_NAME                0 (out)
+             18 LOAD_NAME                3 (str)
+             20 LOAD_NAME                2 (i)
+             22 CALL_FUNCTION            1
+             24 BINARY_ADD
+             26 STORE_NAME               0 (out)
+             28 JUMP_ABSOLUTE            6 (to 12)
+  4     >>   30 LOAD_NAME                4 (print)
+             32 LOAD_NAME                0 (out)
+             34 CALL_FUNCTION            1
+             36 POP_TOP
+             38 LOAD_CONST               2 (None)
+             40 RETURN_VALUE
+```
+原生字节码：
+```shell
+list(frame.f_code.co_code)
+[100, 0, 90, 0, 
+
+101, 1, 100, 1, 131, 1, 68, 0, 93, 8, 90, 2, 
+
+101, 0, 101, 3, 101, 2, 131, 1, 23, 0, 90, 0, 113, 6, 101, 4, 101, 0, 131, 1, 1, 0, 100, 2, 83, 0]
+```
+
+搞错了，主角只是113号JUMP_ABSOLUTE，修改为跳转字节码而不是字节数即可（跳转距离乘以二）
