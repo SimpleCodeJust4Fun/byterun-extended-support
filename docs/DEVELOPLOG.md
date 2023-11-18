@@ -343,4 +343,4 @@ def test_thorough_flow_control(self):
 
 POP_JUMP_IF_FALSE跳转的是绝对量，但跳转值从字节数量改成了字节码数量，因此在字节码本身的实现上要乘以2
 JUMP_FORWARD是相对跳转，也是从字节数量变成字节码数量，字节码本身实现不改动，而是在`parse_byte_and_args`中
-的`elif byteCode in dis.hasjrel`:里乘以2，具体查看commit的代码更新
+的`elif byteCode in dis.hasjrel`:里乘以2，具体查看commit的代码更新 
