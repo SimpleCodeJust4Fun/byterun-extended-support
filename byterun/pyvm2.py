@@ -172,31 +172,28 @@ class VirtualMachine(object):
         byteCode = byteint(f.f_code.co_code[opoffset])
         f.f_lasti += 1
         byteName = dis.opname[byteCode]
-        arg = None
-        arguments = []
-        if byteCode >= dis.HAVE_ARGUMENT:
-            arg = f.f_code.co_code[f.f_lasti:f.f_lasti+2]
-            f.f_lasti += 2
-            intArg = byteint(arg[0]) + (byteint(arg[1]) << 8)
-            if byteCode in dis.hasconst:
-                arg = f.f_code.co_consts[intArg]
-            elif byteCode in dis.hasfree:
-                if intArg < len(f.f_code.co_cellvars):
-                    arg = f.f_code.co_cellvars[intArg]
-                else:
-                    var_idx = intArg - len(f.f_code.co_cellvars)
-                    arg = f.f_code.co_freevars[var_idx]
-            elif byteCode in dis.hasname:
-                arg = f.f_code.co_names[intArg]
-            elif byteCode in dis.hasjrel:
-                arg = f.f_lasti + intArg
-            elif byteCode in dis.hasjabs:
-                arg = intArg
-            elif byteCode in dis.haslocal:
-                arg = f.f_code.co_varnames[intArg]
+        arg = f.f_code.co_code[f.f_lasti:f.f_lasti+1]
+        f.f_lasti += 1
+        intArg = byteint(arg[0])
+        if byteCode in dis.hasconst:
+            arg = f.f_code.co_consts[intArg]
+        elif byteCode in dis.hasfree:
+            if intArg < len(f.f_code.co_cellvars):
+                arg = f.f_code.co_cellvars[intArg]
             else:
-                arg = intArg
-            arguments = [arg]
+                var_idx = intArg - len(f.f_code.co_cellvars)
+                arg = f.f_code.co_freevars[var_idx]
+        elif byteCode in dis.hasname:
+            arg = f.f_code.co_names[intArg]
+        elif byteCode in dis.hasjrel:
+            arg = f.f_lasti + 2 * intArg
+        elif byteCode in dis.hasjabs:
+            arg = intArg
+        elif byteCode in dis.haslocal:
+            arg = f.f_code.co_varnames[intArg]
+        else:
+            arg = intArg
+        arguments = [arg]
 
         return byteName, arguments, opoffset
 
@@ -314,6 +311,7 @@ class VirtualMachine(object):
 
         """
         self.push_frame(frame)
+
         while True:
             byteName, arguments, opoffset = self.parse_byte_and_args()
             if log.isEnabledFor(logging.INFO):
@@ -351,7 +349,7 @@ class VirtualMachine(object):
     def byte_LOAD_CONST(self, const):
         self.push(const)
 
-    def byte_POP_TOP(self):
+    def byte_POP_TOP(self, arg):
         self.pop()
 
     def byte_DUP_TOP(self):
@@ -665,7 +663,7 @@ class VirtualMachine(object):
         self.jump(jump)
 
     def byte_JUMP_ABSOLUTE(self, jump):
-        self.jump(jump)
+        self.jump(jump*2)
 
     if 0:   # Not in py2.7
         def byte_JUMP_IF_TRUE(self, jump):
@@ -681,12 +679,12 @@ class VirtualMachine(object):
     def byte_POP_JUMP_IF_TRUE(self, jump):
         val = self.pop()
         if val:
-            self.jump(jump)
+            self.jump(jump*2)
 
     def byte_POP_JUMP_IF_FALSE(self, jump):
         val = self.pop()
         if not val:
-            self.jump(jump)
+            self.jump(jump*2)
 
     def byte_JUMP_IF_TRUE_OR_POP(self, jump):
         val = self.top()
@@ -707,7 +705,7 @@ class VirtualMachine(object):
     def byte_SETUP_LOOP(self, dest):
         self.push_block('loop', dest)
 
-    def byte_GET_ITER(self):
+    def byte_GET_ITER(self, arg):
         self.push(iter(self.pop()))
 
     def byte_FOR_ITER(self, jump):
@@ -966,7 +964,7 @@ class VirtualMachine(object):
         retval = func(*posargs, **namedargs)
         self.push(retval)
 
-    def byte_RETURN_VALUE(self):
+    def byte_RETURN_VALUE(self, arg):
         self.return_value = self.pop()
         if self.frame.generator:
             self.frame.generator.finished = True

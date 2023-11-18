@@ -12,6 +12,24 @@ class TestIt(vmtest.VmTestCase):
     def test_constant(self):
         self.assert_ok("17")
 
+    def test_var(self):
+        self.assert_ok("""
+            a = 17
+        """)
+
+    def test_return_constant(self):
+        self.assert_ok("""
+        def test():
+            return 17
+        test()
+        """)
+
+    def test_print(self):
+        self.assert_ok("""
+            a = 17
+            print(a)
+        """)
+
     def test_globals(self):
         self.assert_ok("""\
             global xyz
@@ -23,10 +41,32 @@ class TestIt(vmtest.VmTestCase):
                 print("Midst:",xyz)
 
             
-            print "Pre:",xyz
+            print("Pre:",xyz)
             abc()
-            print "Post:",xyz
+            print("Post:",xyz)
             """)
+
+    def test_basic_flow_control(self):
+        self.assert_ok("""
+        a = 1
+        if a == 2:
+            print("ok")
+        else:
+            print("not ok")
+        """)
+
+    def test_thorough_flow_control(self):
+        self.assert_ok("""
+        a = 1
+        if a == 1:
+            print("ok")
+        else:
+            print("not ok")
+        if a == 2:
+            print("ok")
+        else:
+            print("not ok")
+        """)
 
     def test_for_loop(self):
         self.assert_ok("""\
@@ -203,6 +243,7 @@ class TestIt(vmtest.VmTestCase):
                         initial_indent=blanks, subsequent_indent=blanks)
             print(res)
             """)
+
     def test_list_comprehension(self):
         self.assert_ok("""\
             x = [z*z for z in range(5)]
