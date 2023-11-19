@@ -415,3 +415,139 @@ list(frame.f_code.co_code)
 
 ```
 
+## 支持class
+Python源代码：
+```python
+def test_attribute_access(self):
+    self.assert_ok("""\
+        class Thing(object):
+            z = 17
+            def __init__(self):
+                self.x = 23
+        t = Thing()
+        print(Thing.z)
+        print(t.z)
+        print(t.x)
+        """)
+
+    self.assert_ok("""\
+        class Thing(object):
+            z = 17
+            def __init__(self):
+                self.x = 23
+        t = Thing()
+        print(t.xyzzy)
+        """, raises=AttributeError)
+```
+dis字节码：
+```shell
+>>> dis.dis(code)
+  1           0 LOAD_BUILD_CLASS
+              2 LOAD_CONST               0 (<code object Thing at 0x0000020D8155B470, file "<tests.test_basic.TestIt.test_attribute_access>", line 1>)
+              4 LOAD_CONST               1 ('Thing')
+              6 MAKE_FUNCTION            0
+              8 LOAD_CONST               1 ('Thing')
+             10 LOAD_NAME                0 (object)
+             12 CALL_FUNCTION            3
+             14 STORE_NAME               1 (Thing)
+  5          16 LOAD_NAME                1 (Thing)
+             18 CALL_FUNCTION            0
+             20 STORE_NAME               2 (t)
+  6          22 LOAD_NAME                3 (print)
+             24 LOAD_NAME                1 (Thing)
+             26 LOAD_ATTR                4 (z)
+             28 CALL_FUNCTION            1
+             30 POP_TOP
+  7          32 LOAD_NAME                3 (print)
+             34 LOAD_NAME                2 (t)
+             36 LOAD_ATTR                4 (z)
+             38 CALL_FUNCTION            1
+             40 POP_TOP
+  8          42 LOAD_NAME                3 (print)
+             44 LOAD_NAME                2 (t)
+             46 LOAD_ATTR                5 (x)
+             48 CALL_FUNCTION            1
+             50 POP_TOP
+             52 LOAD_CONST               2 (None)
+             54 RETURN_VALUE
+Disassembly of <code object Thing at 0x0000020D8155B470, file "<tests.test_basic.TestIt.test_attribute_access>", line 1>:
+  1           0 LOAD_NAME                0 (__name__)
+              2 STORE_NAME               1 (__module__)
+              4 LOAD_CONST               0 ('Thing')
+              6 STORE_NAME               2 (__qualname__)
+  2           8 LOAD_CONST               1 (17)
+             10 STORE_NAME               3 (z)
+  3          12 LOAD_CONST               2 (<code object __init__ at 0x0000020D8155B3C0, file "<tests.test_basic.TestIt.test_attribute_access>", line 3>)
+             14 LOAD_CONST               3 ('Thing.__init__')
+             16 MAKE_FUNCTION            0
+             18 STORE_NAME               4 (__init__)
+             20 LOAD_CONST               4 (None)
+             22 RETURN_VALUE
+Disassembly of <code object __init__ at 0x0000020D8155B3C0, file "<tests.test_basic.TestIt.test_attribute_access>", line 3>:
+  4           0 LOAD_CONST               1 (23)
+              2 LOAD_FAST                0 (self)
+              4 STORE_ATTR               0 (x)
+              6 LOAD_CONST               0 (None)
+              8 RETURN_VALUE
+```
+原生字节码
+```shell
+>>> list(frame.f_code.co_code)
+[71, 0, 100, 0, 100, 1, 132, 0, 100, 1, 101, 0, 131, 3, 90, 1, 
+
+101, 1, 131, 0, 90, 2, 
+
+101, 3, 101, 1, 106, 4, 131, 1, 1, 0, 101, 3, 101, 2, 106, 4, 131, 1, 1, 0, 
+
+101, 3, 101, 2, 106, 5, 131, 1, 1, 0, 100, 2, 83, 0]
+```
+
+问题是运行到26位置的LOAD_ATTR时，报错AttributeError: type object 'Thing' has no attribute 'z'，提示你新建的这个类没有叫做z的属性
+
+先运行到这里12 CALL_FUNCTION                0 (object)
+通过调试可知这里就是调用的函数就是__build_class__，并且这里的调用是通过新建一个frame来做到的，也就是说这个frame的返回值就是新建的Thing类
+然后开始运行code object Thing的代码，执行完了以后才回到原来的下一个12 CALL_FUNCTION，
+
+容易知道: code object Thing就是new class的逻辑
+
+而下面的code object __init__ 就是类实例的构造函数
+
+于是我觉得问题需要进一步被简化，我先看看只创建类，不实例化，能不能拿到类属性：
+Python源代码：
+```python
+def test_class_attribute_access_ok(self):
+    self.assert_ok("""\
+        class Thing(object):
+            z = 17
+        print(Thing.z)
+        """)
+```
+dis字节码：
+```shell
+  1           0 LOAD_BUILD_CLASS
+              2 LOAD_CONST               0 (<code object Thing at 0x0000015FBA06E290, file "<tests.test_basic.TestIt.test_class_attribute_access_ok>", line 1>)
+              4 LOAD_CONST               1 ('Thing')
+              6 MAKE_FUNCTION            0
+              8 LOAD_CONST               1 ('Thing')
+             10 LOAD_NAME                0 (object)
+             12 CALL_FUNCTION            3
+             14 STORE_NAME               1 (Thing)
+  3          16 LOAD_NAME                2 (print)
+             18 LOAD_NAME                1 (Thing)
+             20 LOAD_ATTR                3 (z)
+             22 CALL_FUNCTION            1
+             24 POP_TOP
+             26 LOAD_CONST               2 (None)
+             28 RETURN_VALUE
+Disassembly of <code object Thing at 0x0000015FBA06E290, file "<tests.test_basic.TestIt.test_class_attribute_access_ok>", line 1>:
+  1           0 LOAD_NAME                0 (__name__)
+              2 STORE_NAME               1 (__module__)
+              4 LOAD_CONST               0 ('Thing')
+              6 STORE_NAME               2 (__qualname__)
+  2           8 LOAD_CONST               1 (17)
+             10 STORE_NAME               3 (z)
+             12 LOAD_CONST               2 (None)
+             14 RETURN_VALUE
+```
+这里6 MAKE_FUNCTION 就是在新建Thing函数，这是个什么函数？
+

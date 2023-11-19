@@ -330,6 +330,41 @@ class TestIt(vmtest.VmTestCase):
             print(thing1.meth(4), thing2.meth(5))
             """)
 
+    def test_py3_3_5_build_classes(self):
+        import types
+
+        class MyFunctionClass:
+            def __call__(self, *args, **kwargs):
+                # 自定义函数类的调用逻辑
+                pass
+
+        # 创建自定义函数类的实例
+        my_function_instance = MyFunctionClass()
+
+        # 判断自定义函数类实例是否为函数对象
+        is_function = isinstance(my_function_instance, types.FunctionType)
+        print(is_function)  # 输出: True
+
+        # 使用自定义函数类实例调用build_class
+        __build_class__(my_function_instance, 'name', object)
+        assert 1
+
+    def test_py3_10_13_build_classes(self):
+        class MyFunctionClass:
+            def __call__(self, *args, **kwargs):
+                # 自定义函数类的调用逻辑
+                pass
+
+        # 创建自定义函数类的实例
+        my_function_instance = MyFunctionClass()
+
+        # 包装自定义函数类实例的函数
+        def wrapper(*args, **kwargs):
+            return my_function_instance(*args, **kwargs)
+
+        # 使用包装函数调用build_class
+        __build_class__(wrapper, 'name', object)
+
     def test_calling_methods_wrong(self):
         self.assert_ok("""\
             class Thing(object):
@@ -424,7 +459,14 @@ class TestIt(vmtest.VmTestCase):
             assert b.baz == 3
             """)
 
-    def test_attribute_access(self):
+    def test_class_attribute_access_ok(self):
+        self.assert_ok("""\
+            class Thing(object):
+                z = 17
+            print(Thing.z)
+            """)
+
+    def test_class_instance_attribute_access_ok(self):
         self.assert_ok("""\
             class Thing(object):
                 z = 17
@@ -436,6 +478,7 @@ class TestIt(vmtest.VmTestCase):
             print(t.x)
             """)
 
+    def test_attribute_access_not_ok(self):
         self.assert_ok("""\
             class Thing(object):
                 z = 17

@@ -3,7 +3,6 @@
 import collections
 import inspect
 import types
-
 import six
 
 
